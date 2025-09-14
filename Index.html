@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PSC Data Dashboard - Naushahro Feroze</title>
+
+  <!-- Chart.js and datalabels plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <style>
+    :root{
+      --dark-blue:#2e75f0;
+      --light-blue:#3aa0ff;
+      --orange:#ff8c00;
+      --yellow:#f1c40f;
+      --card-bg:#ffffffcc;
+      --muted:#d8e6f8;
+      --gray:#7f8c8d;
+      --bg-gradient: linear-gradient(135deg,var(--dark-blue),#0d4274,#7147c0);
+    }
+
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg-gradient);color:#123;}
+    .app{display:flex;height:100vh;overflow:hidden}
+    .sidebar{width:260px;background:rgba(3,30,66,0.95);color:white;padding:24px;box-sizing:border-box}
+    .sidebar h2{margin:0 0 10px;font-size:18px}
+    .nav{margin-top:20px}
+    .nav button{display:block;width:100%;background:transparent;border:none;color:#ffffff;padding:12px 10px;text-align:left;border-radius:6px;cursor:pointer;margin-bottom:6px;transition:all .18s}
+    .nav button:hover{transform:translateX(6px); color:white}
+    .nav button.active{background:linear-gradient(90deg,var(--light-blue),#7147c0);color:#011429;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,0.18)}
+    .main{flex:1;display:flex;flex-direction:column;overflow:auto;padding:22px}
+    .header{display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .logo-row{display:flex;gap:18px;align-items:center}
+
+    /* LOGOS */
+    .logo {
+      width: 150px;
+      height: 110px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      background: white;
+    }
+
+    .logo img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+      border-radius: 10px;
+    }
+
+    /* subtle hover effect for logos */
+    .logo:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    }
+
+    /* panels & cards */
+    .panel{background:var(--card-bg);border-radius:10px;padding:16px;margin-top:18px;box-shadow:0 6px 18px rgba(5,20,40,0.12)}
+    .title{color:#05224a;margin:0 0 8px}
+    .filters{display:flex;gap:12px;align-items:center}
+    select{padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);background:linear-gradient(90deg,#fff7e6,#fff1cc);color:#032244;font-weight:600;cursor:pointer;box-shadow:inset 0 -2px 0 rgba(0,0,0,0.04)}
+    select:focus{outline:none;box-shadow:0 3px 10px rgba(0,0,0,0.12)}
+
+    .cards-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:12px}
+    .card{padding:12px;border-radius:10px;display:flex;flex-direction:column;gap:6px;min-height:88px;color:#082042;box-shadow:0 8px 18px rgba(5,20,40,0.08);transition:transform .15s,box-shadow .15s}
+    .card:hover{transform:translateY(-6px);box-shadow:0 14px 30px rgba(5,20,40,0.16)}
+    .card .num{font-size:18px;font-weight:800;color:#032244}
+    .card .meta{font-size:13px;color:#05324f}
+
+    /* Updated card colors using only yellowish/orangish and blue combinations */
+    .card.uc{background:linear-gradient(135deg,var(--yellow),#ffe49c)}
+    .card.rv{background:linear-gradient(135deg,var(--orange),#ffd0a0)}
+    .card.vill{background:linear-gradient(135deg,var(--light-blue),#cfefff)}
+    .card.hh{background:linear-gradient(135deg,var(--dark-blue),#6ea8ff);color:white}
+    .card.pop{background:linear-gradient(135deg,var(--yellow),#ffe48a)}
+    .card.avg{background:linear-gradient(135deg,var(--orange),#ffd49a)}
+
+    .charts{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px}
+    canvas{background:transparent;border-radius:8px;padding:6px}
+
+    .fullwidth{grid-column:1/-1}
+    footer{margin-top:18px;color:#ffffff;font-size:13px}
+
+    /* summary insights section */
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+    
+    .insight-card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 6px 18px rgba(5,20,40,0.12);
+    }
+    
+    .insight-card h3 {
+      color: #05224a;
+      margin-top: 0;
+      border-bottom: 1px solid #d8e6f8;
+      padding-bottom: 8px;
+    }
+    
+    .insight-card ul {
+      padding-left: 20px;
+    }
+    
+    .insight-card li {
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    /* responsive */
+    @media(max-width:1200px){ 
+      .cards-grid{grid-template-columns:repeat(3,1fr);} 
+      .insights-grid {grid-template-columns: 1fr;}
+    }
+    @media(max-width:800px){ 
+      .cards-grid{grid-template-columns:repeat(2,1fr)} 
+      .charts{grid-template-columns:1fr} 
+      .sidebar{display:none} 
+      .main{padding:12px}
+      .insights-grid {grid-template-columns: 1fr;}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h2>SRSO - PSC Dashboard</h2>
+      <div style="font-size:13px;color:#ffffff;margin-top:8px">Program: People's Poverty Reduction Program (PPRP)</div>
+      <div style="font-size:12px;color:#ffffff;margin-top:8px">Created by: Bilal Ahmed - Data & Monitoring Analyst</div>
+      <nav class="nav">
+        <button id="nav-home" class="active">Home</button>
+        <button id="nav-dashboard">PSC Dashboard</button>
+        <button id="nav-gender">Gender & Age Segregation Dashboard</button>
+        <button id="nav-occupation">Occupation & Income Dashboard</button>
+        <button id="nav-education">Education Dashboard</button>
+        <button id="nav-summary">Progress Summary & Research Insights</button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div>
+          <h1 style="margin:0;color:white">Poverty Score Card Survey (PSC)</h1>
+          <div style="color:rgba(255,255,255,0.9);font-size:13px">Data Analysis & Visualization Dashboard</div>
+        </div>
+
+        <!-- LOGOS - using online sources -->
+        <div class="logo-row" aria-hidden="false">
+          <div class="logo prrp" title="PPRP Logo">
+            <img src="PPRP.jpg" alt="PPRP Logo">
+          </div>
+          <div class="logo gov" title="Government of Sindh Logo">
+            <img src="Sindh Logo.jpg" alt="Government of Sindh Logo">
+          </div>
+          <div class="logo srso" title="SRSO Logo">
+            <img src="SRSO.jpg" alt="SRSO Logo">
+          </div>
+        </div>
+      </header>
+
+      <!-- HOME -->
+      <section id="home" class="panel">
+        <h2 class="title">Welcome</h2>
+        <p><strong>Organization:</strong> Sindh Rural Support Organization (SRSO)</p>
+        <p><strong>Programme:</strong> People's Poverty Reduction Program (PPRP)</p>
+        <p><strong>Survey Name:</strong> Poverty Score Card Survey (PSC)</p>
+        <p><strong>Created By:</strong> Bilal Ahmed — Data & Monitoring Analyst</p>
+      </section>
+
+      <!-- PSC Dashboard -->
+      <section id="psc-dashboard" class="panel" style="margin-top:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 class="title">PSC Dashboard</h2>
+          <div class="filters">
+            <label for="talukaFilter" style="color:#032244;font-weight:700;margin-right:8px">Filter (Taluka Wise):</label>
+            <select id="talukaFilter" aria-label="Select Taluka"></select>
+          </div>
+        </div>
+
+        <!-- Top cards (6 cards) -->
+        <div class="cards-grid" id="topCards">
+          <div class="card uc">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="meta">UC Covered</div>
+                <div class="num" id="cardUC">0</div>
+              </div>
+              <div style="text-align:right"><div id="cardUCpct" style="font-weight:700;color:#07345b"></div></div>
+            </div>
+          </div>
+
+          <div class="card rv">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="meta">RV Covered</div>
+                <div class="num" id="cardRV">0</div>
+              </div>
+              <div style="text-align:right"><div id="cardRVpct" style="font-weight:700;color:#07345b"></div></div>
+            </div>
+          </div>
+
+          <div class="card vill">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="meta">Villages Covered</div>
+                <div class="num" id="cardVill">0</div>
+              </div>
+              <div style="text-align:right"><div id="cardVillpct" style="font-weight:700;color:#07345b"></div></div>
+            </div>
+          </div>
+
+          <div class="card hh">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="meta">Households Covered</div>
+                <div class="num" id="cardHH">0</div>
+              </div>
+              <div style="text-align:right"><div id="cardHHpct" style="font-weight:800;color:rgb(0, 0, 0)"></div></div>
+            </div>
+          </div>
+
+          <div class="card pop">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="meta">Population Covered</div>
+                <div class="num" id="cardPop">0</div>
+              </div>
+              <div style="text-align:right"><div id="cardPoppct" style="font-weight:700;color:#07345b"></div></div>
+            </div>
+          </div>
+
+          <div class="card avg">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="meta">Average Size</div>
+                <div class="num" id="cardAvg">0</div>
+              </div>
+              <div style="text-align:right"><div style="font-weight:700;color:#07345b">household</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts" aria-live="polite">
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Households & Population Covered</h3>
+            <canvas id="chartHousePop"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Toilet Access (Yes / No)</h3>
+            <canvas id="chartToilet"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Rooms Availability (Yes / No)</h3>
+            <canvas id="chartRoom"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Assets Availability (TV / Refrigerator / AC / Stove)</h3>
+            <canvas id="chartAssets"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Vehicle Availability</h3>
+            <canvas id="chartVehicle"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Livestock & Agriculture Land</h3>
+            <canvas id="chartLivestock"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Phone & Electricity</h3>
+            <canvas id="chartPhoneElec"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Major (Three) Source of Drinking Water (Hand Pump / Public Tap / Borehole)</h3>
+            <canvas id="chartWater"></canvas>
+          </div>
+
+          <div class="fullwidth">
+            <h3 style="margin:8px 0 6px;color:#032244">PSC Score Trend (by Categories)</h3>
+            <canvas id="chartPSCscore" class="fullwidth"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Gender & Age Segregation Dashboard -->
+      <section id="gender-age-dashboard" class="panel" style="display:none; margin-top:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 class="title">Gender & Age Segregation Dashboard</h2>
+          <div class="filters">
+            <label for="genderTalukaFilter" style="color:#032244;font-weight:700;margin-right:8px">Filter (Taluka Wise):</label>
+            <select id="genderTalukaFilter" aria-label="Select Taluka"></select>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="cards-grid">
+          <div class="card uc">
+            <div>
+              <div class="meta">Total Population</div>
+              <div class="num" id="genderTotalPop">0</div>
+            </div>
+          </div>
+          <div class="card rv">
+            <div>
+              <div class="meta">Male Population</div>
+              <div class="num" id="genderMale">0</div>
+            </div>
+          </div>
+          <div class="card vill">
+            <div>
+              <div class="meta">Female Population</div>
+              <div class="num" id="genderFemale">0</div>
+            </div>
+          </div>
+          <div class="card hh">
+            <div>
+              <div class="meta">Gender Ratio</div>
+              <div class="num" id="genderRatio">0</div>
+            </div>
+          </div>
+          <div class="card pop">
+            <div>
+              <div class="meta">Children (0-17)</div>
+              <div class="num" id="childrenCount">0</div>
+            </div>
+          </div>
+          <div class="card avg">
+            <div>
+              <div class="meta">Adults (18+)</div>
+              <div class="num" id="adultsCount">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts" aria-live="polite">
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Male vs Female Population</h3>
+            <canvas id="chartGenderPie"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Population Distribution by Age Group</h3>
+            <canvas id="chartAgeDistribution"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Children Age Groups (0-17)</h3>
+            <canvas id="chartChildren"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Adults Age Groups (18+)</h3>
+            <canvas id="chartAdults"></canvas>
+          </div>
+
+          <div class="fullwidth">
+            <h3 style="margin:8px 0 6px;color:#032244">Detailed Age & Gender Segregation</h3>
+            <canvas id="chartDetailedAgeGender" class="fullwidth"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Occupation & Source of Income Dashboard -->
+      <section id="occupation-dashboard" class="panel" style="display:none; margin-top:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 class="title">Occupation & Source of Income Dashboard</h2>
+          <div class="filters">
+            <label for="occupationTalukaFilter" style="color:#032244;font-weight:700;margin-right:8px">Filter (Taluka Wise):</label>
+            <select id="occupationTalukaFilter" aria-label="Select Taluka"></select>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="cards-grid">
+          <div class="card uc">
+            <div>
+              <div class="meta">Total Workers (18-39)</div>
+              <div class="num" id="totalWorkersYoung">0</div>
+            </div>
+          </div>
+          <div class="card rv">
+            <div>
+              <div class="meta">Total Workers (40-64)</div>
+              <div class="num" id="totalWorkersOld">0</div>
+            </div>
+          </div>
+          <div class="card vill">
+            <div>
+              <div class="meta">Top Occupation (18-39)</div>
+              <div class="num" id="topOccupationYoung">-</div>
+            </div>
+          </div>
+          <div class="card hh">
+            <div>
+              <div class="meta">Top Occupation (40-64)</div>
+              <div class="num" id="topOccupationOld">-</div>
+            </div>
+          </div>
+          <div class="card pop">
+            <div>
+              <div class="meta">Farm Labor %</div>
+              <div class="num" id="farmLaborPct">0%</div>
+            </div>
+          </div>
+          <div class="card avg">
+            <div>
+              <div class="meta">Off-Farm Labor %</div>
+              <div class="num" id="offFarmLaborPct">0%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts" aria-live="polite">
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Occupations (Age 18-39)</h3>
+            <canvas id="chartOccupationYoung"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Occupations (Age 40-64)</h3>
+            <canvas id="chartOccupationOld"></canvas>
+          </div>
+
+          <div class="fullwidth">
+            <h3 style="margin:8px 0 6px;color:#032244">Occupation Comparison (All Age Groups)</h3>
+            <canvas id="chartOccupationComparison" class="fullwidth"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Education Dashboard -->
+      <section id="education-dashboard" class="panel" style="display:none; margin-top:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 class="title">Education Dashboard</h2>
+          <div class="filters">
+            <label for="educationTalukaFilter" style="color:#032244;font-weight:700;margin-right:8px">Filter (Taluka Wise):</label>
+            <select id="educationTalukaFilter" aria-label="Select Taluka"></select>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="cards-grid">
+          <div class="card uc">
+            <div>
+              <div class="meta">Total Boys (5-17)</div>
+              <div class="num" id="totalBoys">0</div>
+            </div>
+          </div>
+          <div class="card rv">
+            <div>
+              <div class="meta">Total Girls (5-17)</div>
+              <div class="num" id="totalGirls">0</div>
+            </div>
+          </div>
+          <div class="card vill">
+            <div>
+              <div class="meta">Boys Literacy Rate</div>
+              <div class="num" id="boysLiteracyRate">0%</div>
+            </div>
+          </div>
+          <div class="card hh">
+            <div>
+              <div class="meta">Girls Literacy Rate</div>
+              <div class="num" id="girlsLiteracyRate">0%</div>
+            </div>
+          </div>
+          <div class="card pop">
+            <div>
+              <div class="meta">Adult Male Literacy</div>
+              <div class="num" id="adultMaleLiteracy">0%</div>
+            </div>
+          </div>
+          <div class="card avg">
+            <div>
+              <div class="meta">Adult Female Literacy</div>
+              <div class="num" id="adultFemaleLiteracy">0%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts" aria-live="polite">
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Children (5-17) Literacy Status</h3>
+            <canvas id="chartChildrenLiteracy"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Children (5-17) School Status</h3>
+            <canvas id="chartSchoolStatus"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Adults (18-39) Literacy Status</h3>
+            <canvas id="chartAdultLiteracy1"></canvas>
+          </div>
+
+          <div>
+            <h3 style="margin:8px 0 6px;color:#032244">Adults (40+) Literacy Status</h3>
+            <canvas id="chartAdultLiteracy2"></canvas>
+          </div>
+
+          <div class="fullwidth">
+            <h3 style="margin:8px 0 6px;color:#032244">Detailed Education Overview</h3>
+            <canvas id="chartEducationOverview" class="fullwidth"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Progress Summary & Research Insights -->
+      <section id="summary-insights" class="panel" style="display:none; margin-top:18px">
+        <h2 class="title">Progress Summary & Research Insights</h2>
+        
+        <div class="insights-grid">
+          <div class="insight-card">
+            <h3>Overall Progress Summary</h3>
+            <ul>
+              <li><strong>Total Coverage:</strong> The PSC survey has successfully covered 173,716 households across 5 talukas, representing a population of 948,892 individuals.</li>
+              <li><strong>Geographic Reach:</strong> The program has reached 254 villages across 69 Union Councils, demonstrating extensive rural penetration.</li>
+              <li><strong>Household Size:</strong> The average household size is 5.46 persons, slightly above the national average, indicating larger family units in the region.</li>
+              <li><strong>PSC Score Distribution:</strong> The population is distributed across poverty categories with 14.3% in extreme poverty (0-11), 46.1% in moderate poverty (12-23), and 39.6% in the higher score range (24+).</li>
+              <li><strong>Gender Balance:</strong> The surveyed population shows a relatively balanced gender distribution with a male-to-female ratio of approximately 1.05:1.</li>
+            </ul>
+          </div>
+          
+          <div class="insight-card">
+            <h3>Living Conditions Insights</h3>
+            <ul>
+              <li><strong>Housing:</strong> 42.3% of households have adequate rooms, while 57.7% face overcrowding issues.</li>
+              <li><strong>Sanitation:</strong> 52.8% of households have toilet access, but 47.2% still lack proper sanitation facilities.</li>
+              <li><strong>Assets Ownership:</strong> Only 16.9% of households own a TV, 19.1% have a refrigerator, and just 4.9% have an AC, indicating limited ownership of modern amenities.</li>
+              <li><strong>Energy Access:</strong> 66.1% of households have electricity access, but 33.9% still lack this basic infrastructure.</li>
+              <li><strong>Water Sources:</strong> Hand pumps are the primary water source (71.4%), followed by public taps (14.9%) and boreholes (13.7%).</li>
+            </ul>
+          </div>
+          
+          <div class="insight-card">
+            <h3>Economic & Occupation Insights</h3>
+            <ul>
+              <li><strong>Livestock Ownership:</strong> 56.8% of households own livestock, representing a significant source of livelihood and food security.</li>
+              <li><strong>Agricultural Land:</strong> Only 12.3% of households own agricultural land, indicating limited access to this primary productive asset.</li>
+              <li><strong>Employment Patterns:</strong> Off-farm unskilled labor is the dominant occupation (44.6%), followed by farm labor (18.5%), highlighting the casual labor-based economy.</li>
+              <li><strong>Vehicle Ownership:</strong> 33.6% of households own a motorbike, but only 1.2% own a car, and 65.2% have no vehicle, limiting mobility.</li>
+              <li><strong>Phone Access:</strong> 89.1% of households have phone access, indicating relatively good communication infrastructure.</li>
+            </ul>
+          </div>
+          
+          <div class="insight-card">
+            <h3>Education & Demographic Insights</h3>
+            <ul>
+              <li><strong>Literacy Gap:</strong> Significant gender disparities exist in literacy, with male literacy at 58.3% and female literacy at 38.7%.</li>
+              <li><strong>Child Education:</strong> 62.4% of boys and 51.2% of girls in the 5-17 age group are literate, showing progress but with room for improvement.</li>
+              <li><strong>School Attendance:</strong> 78.4% of literate boys and 73.2% of literate girls are currently attending school.</li>
+              <li><strong>Age Distribution:</strong> The population is relatively young, with 46.8% below 18 years, indicating a high dependency ratio.</li>
+              <li><strong>Adult Education:</strong> Literacy rates decline with age, with only 32.7% of adults over 40 being literate, highlighting historical educational challenges.</li>
+            </ul>
+          </div>
+          
+          <div class="insight-card fullwidth">
+            <h3>Strategic Recommendations</h3>
+            <ul>
+              <li><strong>Livelihood Diversification:</strong> Promote skill development programs to reduce dependence on unskilled labor and create alternative income sources.</li>
+              <li><strong>Women's Economic Empowerment:</strong> Develop targeted programs to enhance female participation in economic activities and decision-making.</li>
+              <li><strong>Education Focus:</strong> Implement girl-specific educational initiatives to bridge the gender gap in literacy and school attendance.</li>
+              <li><strong>Sanitation Improvement:</strong> Prioritize WASH interventions to address the nearly 50% lack of toilet facilities.</li>
+              <li><strong>Agricultural Support:</strong> Provide resources and training to the 12.3% of land-owning households to improve productivity and food security.</li>
+              <li><strong>Energy Access:</strong> Expand renewable energy solutions for the 33.9% of households without electricity access.</li>
+              <li><strong>Social Protection:</strong> Strengthen safety nets for the 14.3% of households in extreme poverty categories.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <footer>Data source: PSC survey provided by admin · Dashboard template created for SRSO</footer>
+    </main>
+  </div>
+
+  <script>
+    // register datalabels plugin (should be available from the included script)
+    if (window.Chart && window['ChartDataLabels']) {
+      Chart.register(ChartDataLabels);
+    }
+
+    // PSC dataset provided by user (exact values)
+    const PSC = {
+      "Bhirya": {UC:14,RV:37,Villages:479,Household:33787,Population:181611,AvgSize:5.38,RoomYes:14643,RoomNo:19144,ToiletYes:17910,ToiletNo:15877,TVYes:5202,TVNo:28585,RefYes:6764,RefNo:27023,ACYes:2456,ACNo:31331,StoveYes:2003,StoveNo:31784,Bike:9732,Car:316,NoVehicle:23739,LivestockYes:15649,LivestockNo:18138,AgriYes:2575,AgriNo:31212,PhoneYes:29784,PhoneNo:4003,ElecYes:22973,ElecNo:10814,Water:{Hand:29575,Tap:2835,Bore:797},PSC_0_11:4874,PSC_12_18:8964,PSC_19_23:6397,PSC_24_100:13552},
+      "Kandiaro": {UC:18,RV:43,Villages:524,Household:46325,Population:256759,AvgSize:5.54,RoomYes:18746,RoomNo:27579,ToiletYes:27849,ToiletNo:18476,TVYes:8497,TVNo:37828,RefYes:10023,RefNo:36302,ACYes:1663,ACNo:44662,StoveYes:5379,StoveNo:40946,Bike:14456,Car:446,NoVehicle:31423,LivestockYes:24642,LivestockNo:21683,AgriYes:4390,AgriNo:41935,PhoneYes:41328,PhoneNo:4997,ElecYes:31363,ElecNo:14962,Water:{Hand:42603,Tap:2777,Bore:359},PSC_0_11:7623,PSC_12_18:11852,PSC_19_23:8520,PSC_24_100:18330},
+      "Mehrabpur": {UC:10,RV:32,Villages:456,Household:27921,Population:156996,AvgSize:5.62,RoomYes:10767,RoomNo:17154,ToiletYes:13348,ToiletNo:14573,TVYes:3772,TVNo:24149,RefYes:5605,RefNo:22316,ACYes:895,ACNo:27026,StoveYes:1400,StoveNo:26521,Bike:10294,Car:482,NoVehicle:17144,LivestockYes:18051,LivestockNo:9870,AgriYes:4679,AgriNo:23242,PhoneYes:25935,PhoneNo:1986,ElecYes:19498,ElecNo:8423,Water:{Hand:23318,Tap:3538,Bore:819},PSC_0_11:3828,PSC_12_18:6973,PSC_19_23:5169,PSC_24_100:11951},
+      "Moro": {UC:14,RV:39,Villages:537,Household:31430,Population:176378,AvgSize:5.61,RoomYes:14752,RoomNo:16678,ToiletYes:16425,ToiletNo:15005,TVYes:8283,TVNo:23147,RefYes:6520,RefNo:24910,ACYes:2320,ACNo:29110,StoveYes:3147,StoveNo:28283,Bike:12586,Car:469,NoVehicle:18375,LivestockYes:18055,LivestockNo:13375,AgriYes:5185,AgriNo:26245,PhoneYes:28212,PhoneNo:3218,ElecYes:22657,ElecNo:8773,Water:{Hand:24572,Tap:3696,Bore:891},PSC_0_11:3513,PSC_12_18:6889,PSC_19_23:5988,PSC_24_100:15040},
+      "Naushahro Feroze": {UC:13,RV:45,Villages:547,Household:34253,Population:177148,AvgSize:5.17,RoomYes:14669,RoomNo:19584,ToiletYes:16188,ToiletNo:18063,TVYes:3622,TVNo:30629,RefYes:4336,RefNo:29916,ACYes:1145,ACNo:33108,StoveYes:2346,StoveNo:31905,Bike:11299,Car:395,NoVehicle:22556,LivestockYes:22232,LivestockNo:12021,AgriYes:4508,AgriNo:29744,PhoneYes:29588,PhoneNo:4665,ElecYes:18403,ElecNo:15850,Water:{Hand:30141,Tap:3069,Bore:200},PSC_0_11:5066,PSC_12_18:9091,PSC_19_23:6756,PSC_24_100:13340},
+      "Total": {UC:69,RV:196,Villages:2543,Household:173716,Population:948892,AvgSize:5.46,RoomYes:73577,RoomNo:100139,ToiletYes:91720,ToiletNo:81994,TVYes:29376,TVNo:144338,RefYes:33248,RefNo:140467,ACYes:8479,ACNo:165237,StoveYes:14275,StoveNo:159439,Bike:58367,Car:2108,NoVehicle:113237,LivestockYes:98629,LivestockNo:75087,AgriYes:21337,AgriNo:152378,PhoneYes:154847,PhoneNo:18869,ElecYes:114894,ElecNo:58822,Water:{Hand:58822,Tap:24904,Bore:43769},PSC_0_11:24904,PSC_12_18:43769,PSC_19_23:32830,PSC_24_100:72213}
+    };
+
+    // Gender & Age Segregation Data
+    const genderAgeData = {
+      "Bhirya": {
+        Male: 93406,
+        Female: 88186,
+        Boys0_4: 12348,
+        Girls0_4: 11770,
+        Boys5_9: 15479,
+        Girls5_9: 14525,
+        Boys10_14: 8535,
+        Girls10_14: 7751,
+        Boys15_17: 6691,
+        Girls15_17: 5646,
+        Male18_24: 11118,
+        Female18_24: 10718,
+        Male25_49: 26717,
+        Female25_49: 25580,
+        Male50_59: 5412,
+        Female50_59: 5091,
+        Male60: 7291,
+        Female60: 7432
+      },
+      "Kandiaro": {
+        Male: 131512,
+        Female: 125222,
+        Boys0_4: 18224,
+        Girls0_4: 17763,
+        Boys5_9: 23296,
+        Girls5_9: 21988,
+        Boys10_14: 11496,
+        Girls10_14: 10624,
+        Boys15_17: 9061,
+        Girls15_17: 7896,
+        Male18_24: 15603,
+        Female18_24: 14775,
+        Male25_49: 36964,
+        Female25_49: 35041,
+        Male50_59: 7045,
+        Female50_59: 7170,
+        Male60: 10150,
+        Female60: 10655
+      },
+      "Mehrabpur": {
+        Male: 80779,
+        Female: 76206,
+        Boys0_4: 12503,
+        Girls0_4: 11601,
+        Boys5_9: 14970,
+        Girls5_9: 13563,
+        Boys10_14: 7136,
+        Girls10_14: 6462,
+        Boys15_17: 5062,
+        Girls15_17: 4377,
+        Male18_24: 9694,
+        Female18_24: 9222,
+        Male25_49: 21259,
+        Female25_49: 20637,
+        Male50_59: 4342,
+        Female50_59: 4312,
+        Male60: 6511,
+        Female60: 6711
+      },
+      "Moro": {
+        Male: 90760,
+        Female: 85607,
+        Boys0_4: 12090,
+        Girls0_4: 11314,
+        Boys5_9: 14912,
+        Girls5_9: 13549,
+        Boys10_14: 8012,
+        Girls10_14: 7318,
+        Boys15_17: 6248,
+        Girls15_17: 5461,
+        Male18_24: 10773,
+        Female18_24: 10079,
+        Male25_49: 26015,
+        Female25_49: 24898,
+        Male50_59: 5582,
+        Female50_59: 5521,
+        Male60: 7498,
+        Female60: 7893
+      },
+      "Naushahro Feroze": {
+        Male: 91038,
+        Female: 86098,
+        Boys0_4: 12049,
+        Girls0_4: 11915,
+        Boys5_9: 15088,
+        Girls5_9: 14025,
+        Boys10_14: 8301,
+        Girls10_14: 7756,
+        Boys15_17: 6323,
+        Girls15_17: 5422,
+        Male18_24: 10868,
+        Female18_24: 10173,
+        Male25_49: 25952,
+        Female25_49: 24768,
+        Male50_59: 5398,
+        Female50_59: 5057,
+        Male60: 6810,
+        Female60: 7061
+      }
+    };
+
+    // Calculate total for genderAgeData
+    const genderAgeTotal = {};
+    Object.keys(genderAgeData["Bhirya"]).forEach(key => {
+      genderAgeTotal[key] = 0;
+      for (const taluka in genderAgeData) {
+        genderAgeTotal[key] += genderAgeData[taluka][key];
+      }
+    });
+
+    // Education Data
+    const educationData = {
+      "Bhirya": {
+        Boys5_17_Not_Literate: 9047,
+        Girls5_17_Not_Literate: 11745,
+        Boys5_17_Literate: 24796,
+        Girls5_17_Literate: 18938,
+        Boys5_17_School_Going: 21890,
+        Girls5_17_School_Going: 15243,
+        Boys5_17_Left_School: 2906,
+        Girls5_17_Left_School: 3695,
+        Male18_39_Literate: 17867,
+        Female18_39_Literate: 9205,
+        Male18_39_Not_Literate: 11826,
+        Female18_39_Not_Literate: 19198,
+        Male40_Literate: 7828,
+        Female40_Literate: 2723,
+        Male40_Not_Literate: 9694,
+        Female40_Not_Literate: 14607
+      },
+      "Kandiaro": {
+        Boys5_17_Not_Literate: 10968,
+        Girls5_17_Not_Literate: 14574,
+        Boys5_17_Literate: 37168,
+        Girls5_17_Literate: 29770,
+        Boys5_17_School_Going: 26179,
+        Girls5_17_School_Going: 18278,
+        Boys5_17_Left_School: 10989,
+        Girls5_17_Left_School: 11492,
+        Male18_39_Literate: 26655,
+        Female18_39_Literate: 13845,
+        Male18_39_Not_Literate: 14813,
+        Female18_39_Not_Literate: 25286,
+        Male40_Literate: 11707,
+        Female40_Literate: 4112,
+        Male40_Not_Literate: 11977,
+        Female40_Not_Literate: 19872
+      },
+      "Mehrabpur": {
+        Boys5_17_Not_Literate: 6434,
+        Girls5_17_Not_Literate: 8627,
+        Boys5_17_Literate: 23289,
+        Girls5_17_Literate: 18110,
+        Boys5_17_School_Going: 18534,
+        Girls5_17_School_Going: 12900,
+        Boys5_17_Left_School: 4755,
+        Girls5_17_Left_School: 5210,
+        Male18_39_Literate: 15967,
+        Female18_39_Literate: 7822,
+        Male18_39_Not_Literate: 8420,
+        Female18_39_Not_Literate: 15658,
+        Male40_Literate: 6676,
+        Female40_Literate: 1943,
+        Male40_Not_Literate: 7490,
+        Female40_Not_Literate: 12445
+      },
+      "Moro": {
+        Boys5_17_Not_Literate: 8092,
+        Girls5_17_Not_Literate: 9988,
+        Boys5_17_Literate: 24125,
+        Girls5_17_Literate: 18986,
+        Boys5_17_School_Going: 18970,
+        Girls5_17_School_Going: 13529,
+        Boys5_17_Left_School: 5155,
+        Girls5_17_Left_School: 5457,
+        Male18_39_Literate: 17886,
+        Female18_39_Literate: 9368,
+        Male18_39_Not_Literate: 10700,
+        Female18_39_Not_Literate: 17717,
+        Male40_Literate: 8557,
+        Female40_Literate: 2990,
+        Male40_Not_Literate: 9310,
+        Female40_Not_Literate: 15244
+      },
+      "Naushahro Feroze": {
+        Boys5_17_Not_Literate: 9643,
+        Girls5_17_Not_Literate: 12012,
+        Boys5_17_Literate: 23231,
+        Girls5_17_Literate: 17901,
+        Boys5_17_School_Going: 18652,
+        Girls5_17_School_Going: 13030,
+        Boys5_17_Left_School: 4579,
+        Girls5_17_Left_School: 4871,
+        Male18_39_Literate: 16660,
+        Female18_39_Literate: 8296,
+        Male18_39_Not_Literate: 12142,
+        Female18_39_Not_Literate: 19037,
+        Male40_Literate: 7057,
+        Female40_Literate: 2167,
+        Male40_Not_Literate: 10256,
+        Female40_Not_Literate: 14770
+      }
+    };
+
+    // Calculate total for educationData
+    const educationTotal = {};
+    Object.keys(educationData["Bhirya"]).forEach(key => {
+      educationTotal[key] = 0;
+      for (const taluka in educationData) {
+        educationTotal[key] += educationData[taluka][key];
+      }
+    });
+
+    // Occupation & Source of Income Data
+    const occupationData = {
+      "Bhirya": {
+        FarmLaborYoung: 4005,
+        TailorYoung: 944,
+        OffFarmUnskilledYoung: 15531,
+        HandicraftsYoung: 2781,
+        PrivateJobYoung: 2161,
+        FarmLaborOld: 2851,
+        OwnFarmingOld: 495,
+        OffFarmUnskilledOld: 6366,
+        GovtJobOld: 799,
+        HandicraftsOld: 1166
+      },
+      "Kandiaro": {
+        FarmLaborYoung: 6103,
+        TailorYoung: 1167,
+        OffFarmUnskilledYoung: 20126,
+        HandicraftsYoung: 2639,
+        PrivateJobYoung: 2253,
+        FarmLaborOld: 4328,
+        OwnFarmingOld: 839,
+        OffFarmUnskilledOld: 7808,
+        GovtJobOld: 1156,
+        HandicraftsOld: 1149
+      },
+      "Mehrabpur": {
+        FarmLaborYoung: 2999,
+        TailorYoung: 1059,
+        OffFarmUnskilledYoung: 11917,
+        HandicraftsYoung: 1779,
+        PrivateJobYoung: 1681,
+        FarmLaborOld: 2444,
+        OwnFarmingOld: 1246,
+        OffFarmUnskilledOld: 4314,
+        GovtJobOld: 625,
+        HandicraftsOld: 831
+      },
+      "Moro": {
+        FarmLaborYoung: 3215,
+        TailorYoung: 1135,
+        OffFarmUnskilledYoung: 13243,
+        HandicraftsYoung: 3060,
+        PrivateJobYoung: 2779,
+        FarmLaborOld: 2939,
+        OwnFarmingOld: 894,
+        OffFarmUnskilledOld: 5994,
+        GovtJobOld: 737,
+        HandicraftsOld: 1579
+      },
+      "Naushahro Feroze": {
+        FarmLaborYoung: 2636,
+        TailorYoung: 1197,
+        OffFarmUnskilledYoung: 16601,
+        HandicraftsYoung: 4868,
+        PrivateJobYoung: 2670,
+        FarmLaborOld: 2503,
+        OwnFarmingOld: 701,
+        OffFarmUnskilledOld: 7341,
+        GovtJobOld: 655,
+        HandicraftsOld: 2224
+      }
+    };
+
+    // Calculate total for occupationData
+    const occupationTotal = {};
+    Object.keys(occupationData["Bhirya"]).forEach(key => {
+      occupationTotal[key] = 0;
+      for (const taluka in occupationData) {
+        occupationTotal[key] += occupationData[taluka][key];
+      }
+    });
+
+    const talukas = ["All","Bhirya","Kandiaro","Mehrabpur","Moro","Naushahro Feroze"];
+
+    // helper formatting
+    function fmt(n){ return (typeof n === 'number') ? n.toLocaleString() : n; }
+    function pct(part, base){ if(!base) return '0.0%'; return ((part/base)*100).toFixed(1)+'%'; }
+
+    // populate taluka filter
+    const sel = document.getElementById('talukaFilter');
+    const genderSel = document.getElementById('genderTalukaFilter');
+    const occupationSel = document.getElementById('occupationTalukaFilter');
+    const educationSel = document.getElementById('educationTalukaFilter');
+    talukas.forEach(t=>{
+      const o = document.createElement('option'); o.value = t; o.text = t; sel.appendChild(o);
+      const o2 = document.createElement('option'); o2.value = t; o2.text = t; genderSel.appendChild(o2);
+      const o3 = document.createElement('option'); o3.value = t; o3.text = t; occupationSel.appendChild(o3);
+      const o4 = document.createElement('option'); o4.value = t; o4.text = t; educationSel.appendChild(o4);
+    });
+
+    // chart storage
+    let charts = {};
+    let genderCharts = {};
+    let occupationCharts = {};
+    let educationCharts = {};
+
+    // get data for selection
+    function getData(key){
+      if(key==='All') return PSC['Total'];
+      // ensure exact key match
+      return PSC[key] || PSC['Total'];
+    }
+
+    // get gender data for selection
+    function getGenderData(key){
+      if(key==='All') return genderAgeTotal;
+      return genderAgeData[key] || genderAgeTotal;
+    }
+
+    // get occupation data for selection
+    function getOccupationData(key){
+      if(key==='All') return occupationTotal;
+      return occupationData[key] || occupationTotal;
+    }
+
+    // get education data for selection
+    function getEducationData(key){
+      if(key==='All') return educationTotal;
+      return educationData[key] || educationTotal;
+    }
+
+    // render top cards (counts + percent vs. grand total)
+    function renderCards(data){
+      const total = PSC['Total'];
+
+      document.getElementById('cardUC').innerText = fmt(data.UC);
+      document.getElementById('cardUCpct').innerText = '(' + pct(data.UC, total.UC) + ')';
+
+      document.getElementById('cardRV').innerText = fmt(data.RV);
+      document.getElementById('cardRVpct').innerText = '(' + pct(data.RV, total.RV) + ')';
+
+      document.getElementById('cardVill').innerText = fmt(data.Villages);
+      document.getElementById('cardVillpct').innerText = '(' + pct(data.Villages, total.Villages) + ')';
+
+      document.getElementById('cardHH').innerText = fmt(data.Household);
+      document.getElementById('cardHHpct').innerText = '(' + pct(data.Household, total.Household) + ')';
+
+      document.getElementById('cardPop').innerText = fmt(data.Population);
+      document.getElementById('cardPoppct').innerText = '(' + pct(data.Population, total.Population) + ')';
+
+      document.getElementById('cardAvg').innerText = data.AvgSize ? data.AvgSize.toFixed(2) : '—';
+    }
+
+    // render gender cards
+    function renderGenderCards(data) {
+      const totalPop = data.Male + data.Female;
+      const children = data.Boys0_4 + data.Girls0_4 + data.Boys5_9 + data.Girls5_9 + 
+                      data.Boys10_14 + data.Girls10_14 + data.Boys15_17 + data.Girls15_17;
+      const adults = totalPop - children;
+      const ratio = (data.Male / data.Female).toFixed(2);
+      
+      document.getElementById('genderTotalPop').innerText = fmt(totalPop);
+      document.getElementById('genderMale').innerText = fmt(data.Male);
+      document.getElementById('genderFemale').innerText = fmt(data.Female);
+      document.getElementById('genderRatio').innerText = ratio + ':1';
+      document.getElementById('childrenCount').innerText = fmt(children);
+      document.getElementById('adultsCount').innerText = fmt(adults);
+    }
+
+    // render occupation cards
+    function renderOccupationCards(data) {
+      const totalYoung = data.FarmLaborYoung + data.TailorYoung + data.OffFarmUnskilledYoung + 
+                        data.HandicraftsYoung + data.PrivateJobYoung;
+      const totalOld = data.FarmLaborOld + data.OwnFarmingOld + data.OffFarmUnskilledOld + 
+                      data.GovtJobOld + data.HandicraftsOld;
+      const totalWorkers = totalYoung + totalOld;
+      
+      // Find top occupations
+      const youngOccupations = {
+        "Farm Labor": data.FarmLaborYoung,
+        "Tailor": data.TailorYoung,
+        "Off-Farm Unskilled": data.OffFarmUnskilledYoung,
+        "Handicrafts": data.HandicraftsYoung,
+        "Private Job": data.PrivateJobYoung
+      };
+      
+      const oldOccupations = {
+        "Farm Labor": data.FarmLaborOld,
+        "Own Farming": data.OwnFarmingOld,
+        "Off-Farm Unskilled": data.OffFarmUnskilledOld,
+        "Govt Job": data.GovtJobOld,
+        "Handicrafts": data.HandicraftsOld
+      };
+      
+      const topYoung = Object.keys(youngOccupations).reduce((a, b) => 
+        youngOccupations[a] > youngOccupations[b] ? a : b);
+      const topOld = Object.keys(oldOccupations).reduce((a, b) => 
+        oldOccupations[a] > oldOccupations[b] ? a : b);
+      
+      document.getElementById('totalWorkersYoung').innerText = fmt(totalYoung);
+      document.getElementById('totalWorkersOld').innerText = fmt(totalOld);
+      document.getElementById('topOccupationYoung').innerText = topYoung;
+      document.getElementById('topOccupationOld').innerText = topOld;
+      document.getElementById('farmLaborPct').innerText = pct(data.FarmLaborYoung + data.FarmLaborOld, totalWorkers);
+      document.getElementById('offFarmLaborPct').innerText = pct(data.OffFarmUnskilledYoung + data.OffFarmUnskilledOld, totalWorkers);
+    }
+
+    // render education cards
+    function renderEducationCards(data) {
+      const totalBoys = data.Boys5_17_Not_Literate + data.Boys5_17_Literate;
+      const totalGirls = data.Girls5_17_Not_Literate + data.Girls5_17_Literate;
+      const boysLiteracyRate = pct(data.Boys5_17_Literate, totalBoys);
+      const girlsLiteracyRate = pct(data.Girls5_17_Literate, totalGirls);
+      
+      const adultMaleTotal = data.Male18_39_Literate + data.Male18_39_Not_Literate + data.Male40_Literate + data.Male40_Not_Literate;
+      const adultFemaleTotal = data.Female18_39_Literate + data.Female18_39_Not_Literate + data.Female40_Literate + data.Female40_Not_Literate;
+      const adultMaleLiteracy = pct(data.Male18_39_Literate + data.Male40_Literate, adultMaleTotal);
+      const adultFemaleLiteracy = pct(data.Female18_39_Literate + data.Female40_Literate, adultFemaleTotal);
+      
+      document.getElementById('totalBoys').innerText = fmt(totalBoys);
+      document.getElementById('totalGirls').innerText = fmt(totalGirls);
+      document.getElementById('boysLiteracyRate').innerText = boysLiteracyRate;
+      document.getElementById('girlsLiteracyRate').innerText = girlsLiteracyRate;
+      document.getElementById('adultMaleLiteracy').innerText = adultMaleLiteracy;
+      document.getElementById('adultFemaleLiteracy').innerText = adultFemaleLiteracy;
+    }
+
+    // destroy previous chart
+    function destroyChart(id){
+      if(charts[id]){ try{ charts[id].destroy(); }catch(e){} charts[id]=null; }
+    }
+
+    // destroy previous gender chart
+    function destroyGenderChart(id){
+      if(genderCharts[id]){ try{ genderCharts[id].destroy(); }catch(e){} genderCharts[id]=null; }
+    }
+
+    // destroy previous occupation chart
+    function destroyOccupationChart(id){
+      if(occupationCharts[id]){ try{ occupationCharts[id].destroy(); }catch(e){} occupationCharts[id]=null; }
+    }
+
+    // destroy previous education chart
+    function destroyEducationChart(id){
+      if(educationCharts[id]){ try{ educationCharts[id].destroy(); }catch(e){} educationCharts[id]=null; }
+    }
+
+    // create charts with percentages in datalabels (percent = value / household)
+    function renderCharts(data){
+      const hh = data.Household || 1;
+
+      // --- Households & Population (show absolute numbers in labels) ---
+      destroyChart('chartHousePop');
+      charts['chartHousePop'] = new Chart(document.getElementById('chartHousePop'), {
+        type: 'bar',
+        data: {
+          labels: ['Households','Population'],
+          datasets: [{
+            label: 'Count',
+            data: [data.Household || 0, data.Population || 0],
+            backgroundColor: [ '#fa8e00', '#0b3d91' ]
+          }]
+        },
+        options: {
+          responsive:true,
+          plugins:{
+            datalabels: {
+              display: true,
+              anchor: 'end',
+              align: 'end',
+              formatter: (value)=> value.toLocaleString()
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx)=> {
+                  const v = ctx.raw || 0;
+                  return `${ctx.label}: ${v.toLocaleString()}`;
+                }
+              }
+            }
+          },
+          scales:{ y:{ beginAtZero:true } }
+        }
+      });
+
+      // --- Toilet Access (doughnut) ---
+      destroyChart('chartToilet');
+      const toiletYes = data.ToiletYes || 0; const toiletNo = data.ToiletNo || 0;
+      charts['chartToilet'] = new Chart(document.getElementById('chartToilet'),{
+        type: 'doughnut',
+        data: { labels:['Toilet Yes','Toilet No'], datasets:[{ data:[toiletYes,toiletNo], backgroundColor:[ '#3aa0ff', '#ff8c00' ] }] },
+        options:{
+          responsive:true,
+          plugins:{
+            datalabels:{
+              color:'#fff',
+              formatter: (value)=> ((value / hh)*100).toFixed(1) + '%'
+            },
+            tooltip:{
+              callbacks:{
+                label:(ctx)=>{
+                  const v = ctx.raw || 0;
+                  return `${ctx.label}: ${v.toLocaleString()} (${((v/hh)*100).toFixed(1)}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // --- Rooms (bar) ---
+      destroyChart('chartRoom');
+      charts['chartRoom'] = new Chart(document.getElementById('chartRoom'),{
+        type:'bar',
+        data:{ labels:['Room Yes','Room No'], datasets:[{ data:[data.RoomYes||0, data.RoomNo||0], backgroundColor:['#0b3d91','#f1c40f'] }]},
+        options:{
+          responsive:true,
+          plugins:{
+            datalabels:{
+              color:'#fff',
+              formatter:(v)=> ((v / hh)*100).toFixed(1) + '%'
+            },
+            tooltip:{
+              callbacks:{
+                label:(ctx)=>{
+                  const v = ctx.raw || 0;
+                  return `${ctx.label}: ${v.toLocaleString()} (${((v/hh)*100).toFixed(1)}%)`;
+                }
+              }
+            }
+          },
+          scales:{ y:{ beginAtZero:true } }
+        }
+      });
+
+      // --- Assets (stacked bars) ---
+      destroyChart('chartAssets');
+      const assetsYes = [data.TVYes||0, data.RefYes||0, data.ACYes||0, data.StoveYes||0];
+      const assetsNo  = [data.TVNo||0, data.RefNo||0, data.ACNo||0, data.StoveNo||0];
+      charts['chartAssets'] = new Chart(document.getElementById('chartAssets'),{
+        type:'bar',
+        data:{
+          labels:['TV','Refrigerator','AC','Stove'],
+          datasets:[
+            { label:'Yes', data: assetsYes, backgroundColor: ['#3aa0ff','#3aa0ff','#3aa0ff','#3aa0ff'] },
+            { label:'No',  data: assetsNo,  backgroundColor: ['#ff8c00','#ff8c00','#ff8c00','#ff8c00'] }
+          ]
+        },
+        options:{
+          responsive:true,
+          plugins:{
+            datalabels:{
+              display:true,
+              color:'#fff',
+              formatter:(value,ctx)=>{
+                // show percent relative to household
+                return ((value / hh) * 100).toFixed(1) + '%';
+              }
+            },
+            tooltip:{
+              callbacks:{
+                label:(ctx)=>{
+                  const v = ctx.raw || 0;
+                  return `${ctx.dataset.label} ${ctx.label}: ${v.toLocaleString()} (${((v/hh)*100).toFixed(1)}%)`;
+                }
+              }
+            }
+          },
+          scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } }
+        }
+      });
+
+      // --- Vehicle (pie) ---
+      destroyChart('chartVehicle');
+      const vehData = [data.Bike||0, data.Car||0, data.NoVehicle||0];
+      charts['chartVehicle'] = new Chart(document.getElementById('chartVehicle'),{
+        type:'pie',
+        data:{ labels:['Motorbike','Car','No Vehicle'], datasets:[{ data:vehData, backgroundColor:['#f1c40f','#fcba83','#ff8c00'] }]},
+        options:{
+          responsive:true,
+          plugins:{
+            datalabels:{
+              color:'#032244',
+              formatter:(v)=> ((v / hh) * 100).toFixed(1) + '%'
+            },
+            tooltip:{
+              callbacks:{
+                label:(ctx)=> {
+                  const v = ctx.raw || 0;
+                  return `${ctx.label}: ${v.toLocaleString()} (${((v/hh)*100).toFixed(1)}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // --- Livestock & Agri (bar) ---
+      destroyChart('chartLivestock');
+      const livYes = data.LivestockYes||0, livNo = data.LivestockNo||0, agYes = data.AgriYes||0, agNo = data.AgriNo||0;
+      charts['chartLivestock'] = new Chart(document.getElementById('chartLivestock'),{
+        type:'bar',
+        data:{ labels:['Livestock Yes','Livestock No','Agri Yes','Agri No'], datasets:[{ data:[livYes,livNo,agYes,agNo], backgroundColor:['#3aa0ff','#ff8c00','#0b3d91','#f1c40f'] }]},
+        options:{
+          responsive:true,
+          plugins:{
+            datalabels:{ color:'#fff', formatter:(v)=> ((v/hh)*100).toFixed(1) + '%' },
+            tooltip:{ callbacks:{ label:(ctx)=>{ const v=ctx.raw||0; return `${ctx.label}: ${v.toLocaleString()} (${((v/hh)*100).toFixed(1)}%)`; } } }
+          },
+          scales:{ y:{ beginAtZero:true } }
+        }
+      });
+
+      // --- Phone & Electricity (bar) ---
+      destroyChart('chartPhoneElec');
+      charts['chartPhoneElec'] = new Chart(document.getElementById('chartPhoneElec'),{
+        type:'bar',
+        data:{
+          labels:['Phone Yes','Phone No','Electricity Yes','Electricity No'],
+          datasets:[{ data:[data.PhoneYes||0, data.PhoneNo||0, data.ElecYes||0, data.ElecNo||0], backgroundColor:['#3aa0ff','#f1c40f','#0b3d91','#ff8c00'] }]
+        },
+        options:{
+          responsive:true,
+          plugins:{
+            datalabels:{ color:'#fff', formatter:(v)=> ((v/hh)*100).toFixed(1) + '%' },
+            tooltip:{ callbacks:{ label:(ctx)=>{ const v=ctx.raw||0; return `${ctx.label}: ${v.toLocaleString()} (${((v/hh)*100).toFixed(1)}%)`; } } }
+          },
+          scales:{ y:{ beginAtZero:true } }
+        }
+      });
+
+      // --- Water sources (bar) ---
+      destroyChart('chartWater');
+      const wh = data.Water || {Hand:0, Tap:0, Bore:0};
+      charts['chartWater'] = new Chart(document.getElementById('chartWater'),{
+        type:'bar',
+        data:{ labels:['Hand Pump','Public Tap','Borehole'], datasets:[{ data:[wh.Hand||0, wh.Tap||0, wh.Bore||0], backgroundColor:['#0b3d91','#3aa0ff','#ff8c00'] }]},
+        options:{
+          responsive:true,
+          plugins:{
+            datalabels:{ color:'#fff', formatter:(v)=> ((v/hh)*100).toFixed(1) + '%' },
+            tooltip:{ callbacks:{ label:(ctx)=> { const v=ctx.raw||0; return `${ctx.label}: ${v.toLocaleString()} (${((v/hh)*100).toFixed(1)}%)`; } } }
+          },
+          scales:{ y:{ beginAtZero:true } }
+        }
+      });
+
+      // --- PSC Score Trend (bar) ---
+      destroyChart('chartPSCscore');
+      charts['chartPSCscore'] = new Chart(document.getElementById('chartPSCscore'),{
+        type:'bar',
+        data:{
+          labels:['0-11','12-18','19-23','24-100'],
+          datasets:[{ data:[data.PSC_0_11||0, data.PSC_12_18||0, data.PSC_19_23||0, data.PSC_24_100||0],
+                      backgroundColor:['#f1c40f','#ff8c00','#3aa0ff','#0045b8'] }]
+        },
+        options:{
+          responsive:true,
+          plugins:{
+            datalabels:{ color:'#082042', formatter:(v)=> ((v/hh)*100).toFixed(1) + '%' },
+            tooltip:{ callbacks:{ label:(ctx)=> { const v=ctx.raw||0; return `${ctx.label}: ${v.toLocaleString()} (${((v/hh)*100).toFixed(1)}%)`; } } }
+          },
+          scales:{ y:{ beginAtZero:true } }
+        }
+      });
+    }
+
+    // render gender and age charts
+    function renderGenderCharts(data) {
+      const totalPop = data.Male + data.Female;
+      
+      // --- Gender Pie Chart ---
+      destroyGenderChart('chartGenderPie');
+      genderCharts['chartGenderPie'] = new Chart(document.getElementById('chartGenderPie'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Male', 'Female'],
+          datasets: [{
+            data: [data.Male, data.Female],
+            backgroundColor: ['#3aa0ff', '#ff8c00']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value) => pct(value, totalPop)
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  return `${ctx.label}: ${v.toLocaleString()} (${pct(v, totalPop)})`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // --- Age Distribution Chart ---
+      const children = data.Boys0_4 + data.Girls0_4 + data.Boys5_9 + data.Girls5_9 + 
+                      data.Boys10_14 + data.Girls10_14 + data.Boys15_17 + data.Girls15_17;
+      const adults = totalPop - children;
+      
+      destroyGenderChart('chartAgeDistribution');
+      genderCharts['chartAgeDistribution'] = new Chart(document.getElementById('chartAgeDistribution'), {
+        type: 'bar',
+        data: {
+          labels: ['Children (0-17)', 'Adults (18+)'],
+          datasets: [{
+            label: 'Population',
+            data: [children, adults],
+            backgroundColor: ['#3aa0ff', '#ff8c00']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value) => pct(value, totalPop)
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  return `${ctx.label}: ${v.toLocaleString()} (${pct(v, totalPop)})`;
+                }
+              }
+            }
+          },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      // --- Children Age Groups Chart ---
+      destroyGenderChart('chartChildren');
+      genderCharts['chartChildren'] = new Chart(document.getElementById('chartChildren'), {
+        type: 'bar',
+        data: {
+          labels: ['0-4', '5-9', '10-14', '15-17'],
+          datasets: [
+            {
+              label: 'Boys',
+              data: [data.Boys0_4, data.Boys5_9, data.Boys10_14, data.Boys15_17],
+              backgroundColor: '#3aa0ff'
+            },
+            {
+              label: 'Girls',
+              data: [data.Girls0_4, data.Girls5_9, data.Girls10_14, data.Girls15_17],
+              backgroundColor: '#ff8c00'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value) => pct(value, totalPop)
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  return `${ctx.dataset.label} ${ctx.label}: ${v.toLocaleString()} (${pct(v, totalPop)})`;
+                }
+              }
+            }
+          },
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true } 
+          }
+        }
+      });
+
+      // --- Adults Age Groups Chart ---
+      destroyGenderChart('chartAdults');
+      genderCharts['chartAdults'] = new Chart(document.getElementById('chartAdults'), {
+        type: 'bar',
+        data: {
+          labels: ['18-24', '25-49', '50-59', '60+'],
+          datasets: [
+            {
+              label: 'Male',
+              data: [data.Male18_24, data.Male25_49, data.Male50_59, data.Male60],
+              backgroundColor: '#3aa0ff'
+            },
+            {
+              label: 'Female',
+              data: [data.Female18_24, data.Female25_49, data.Female50_59, data.Female60],
+              backgroundColor: '#ff8c00'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value) => pct(value, totalPop)
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  return `${ctx.dataset.label} ${ctx.label}: ${v.toLocaleString()} (${pct(v, totalPop)})`;
+                }
+              }
+            }
+          },
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true } 
+          }
+        }
+      });
+
+      // --- Detailed Age & Gender Chart ---
+      destroyGenderChart('chartDetailedAgeGender');
+      genderCharts['chartDetailedAgeGender'] = new Chart(document.getElementById('chartDetailedAgeGender'), {
+        type: 'bar',
+        data: {
+          labels: ['0-4', '5-9', '10-14', '15-17', '18-24', '25-49', '50-59', '60+'],
+          datasets: [
+            {
+              label: 'Male',
+              data: [
+                data.Boys0_4, 
+                data.Boys5_9, 
+                data.Boys10_14, 
+                data.Boys15_17,
+                data.Male18_24,
+                data.Male25_49,
+                data.Male50_59,
+                data.Male60
+              ],
+              backgroundColor: '#3aa0ff'
+            },
+            {
+              label: 'Female',
+              data: [
+                data.Girls0_4, 
+                data.Girls5_9, 
+                data.Girls10_14, 
+                data.Girls15_17,
+                data.Female18_24,
+                data.Female25_49,
+                data.Female50_59,
+                data.Female60
+              ],
+              backgroundColor: '#ff8c00'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value) => pct(value, totalPop)
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  return `${ctx.dataset.label} ${ctx.label}: ${v.toLocaleString()} (${pct(v, totalPop)})`;
+                }
+              }
+            }
+          },
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true } 
+          }
+        }
+      });
+    }
+
+    // render occupation charts
+    function renderOccupationCharts(data) {
+      const totalYoung = data.FarmLaborYoung + data.TailorYoung + data.OffFarmUnskilledYoung + 
+                        data.HandicraftsYoung + data.PrivateJobYoung;
+      const totalOld = data.FarmLaborOld + data.OwnFarmingOld + data.OffFarmUnskilledOld + 
+                      data.GovtJobOld + data.HandicraftsOld;
+      const totalWorkers = totalYoung + totalOld;
+      
+      // --- Occupation Young (18-39) Chart ---
+      destroyOccupationChart('chartOccupationYoung');
+      occupationCharts['chartOccupationYoung'] = new Chart(document.getElementById('chartOccupationYoung'), {
+        type: 'bar',
+        data: {
+          labels: ['Farm Labor', 'Tailor', 'Off-Farm Unskilled', 'Handicrafts', 'Private Job'],
+          datasets: [{
+            label: 'Workers (18-39)',
+            data: [
+              data.FarmLaborYoung, 
+              data.TailorYoung, 
+              data.OffFarmUnskilledYoung, 
+              data.HandicraftsYoung, 
+              data.PrivateJobYoung
+            ],
+            backgroundColor: ['#3aa0ff', '#ff8c00', '#f1c40f', '#0b3d91', '#fcba83']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value) => pct(value, totalYoung)
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  return `${ctx.label}: ${v.toLocaleString()} (${pct(v, totalYoung)})`;
+                }
+              }
+            }
+          },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      // --- Occupation Old (40-64) Chart ---
+      destroyOccupationChart('chartOccupationOld');
+      occupationCharts['chartOccupationOld'] = new Chart(document.getElementById('chartOccupationOld'), {
+        type: 'bar',
+        data: {
+          labels: ['Farm Labor', 'Own Farming', 'Off-Farm Unskilled', 'Govt Job', 'Handicrafts'],
+          datasets: [{
+            label: 'Workers (40-64)',
+            data: [
+              data.FarmLaborOld, 
+              data.OwnFarmingOld, 
+              data.OffFarmUnskilledOld, 
+              data.GovtJobOld, 
+              data.HandicraftsOld
+            ],
+            backgroundColor: ['#3aa0ff', '#ff8c00', '#f1c40f', '#0b3d91', '#fcba83']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value) => pct(value, totalOld)
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  return `${ctx.label}: ${v.toLocaleString()} (${pct(v, totalOld)})`;
+                }
+              }
+            }
+          },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      // --- Occupation Comparison Chart ---
+      destroyOccupationChart('chartOccupationComparison');
+      occupationCharts['chartOccupationComparison'] = new Chart(document.getElementById('chartOccupationComparison'), {
+        type: 'bar',
+        data: {
+          labels: ['Farm Labor', 'Off-Farm Unskilled', 'Handicrafts', 'Private/Govt Job', 'Tailor/Own Farming'],
+          datasets: [
+            {
+              label: 'Age 18-39',
+              data: [
+                data.FarmLaborYoung, 
+                data.OffFarmUnskilledYoung, 
+                data.HandicraftsYoung, 
+                data.PrivateJobYoung,
+                data.TailorYoung
+              ],
+              backgroundColor: '#3aa0ff'
+            },
+            {
+              label: 'Age 40-64',
+              data: [
+                data.FarmLaborOld, 
+                data.OffFarmUnskilledOld, 
+                data.HandicraftsOld, 
+                data.GovtJobOld,
+                data.OwnFarmingOld
+              ],
+              backgroundColor: '#ff8c00'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value, ctx) => {
+                const datasetIndex = ctx.datasetIndex;
+                const total = datasetIndex === 0 ? totalYoung : totalOld;
+                return pct(value, total);
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  const total = ctx.datasetIndex === 0 ? totalYoung : totalOld;
+                  return `${ctx.dataset.label} ${ctx.label}: ${v.toLocaleString()} (${pct(v, total)})`;
+                }
+              }
+            }
+          },
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true } 
+          }
+        }
+      });
+    }
+
+    // render education charts
+    function renderEducationCharts(data) {
+      const totalBoys = data.Boys5_17_Not_Literate + data.Boys5_17_Literate;
+      const totalGirls = data.Girls5_17_Not_Literate + data.Girls5_17_Literate;
+      const totalAdultMale = data.Male18_39_Literate + data.Male18_39_Not_Literate + data.Male40_Literate + data.Male40_Not_Literate;
+      const totalAdultFemale = data.Female18_39_Literate + data.Female18_39_Not_Literate + data.Female40_Literate + data.Female40_Not_Literate;
+      
+      // --- Children Literacy Chart ---
+      destroyEducationChart('chartChildrenLiteracy');
+      educationCharts['chartChildrenLiteracy'] = new Chart(document.getElementById('chartChildrenLiteracy'), {
+        type: 'bar',
+        data: {
+          labels: ['Boys', 'Girls'],
+          datasets: [
+            {
+              label: 'Literate',
+              data: [data.Boys5_17_Literate, data.Girls5_17_Literate],
+              backgroundColor: '#3aa0ff'
+            },
+            {
+              label: 'Not Literate',
+              data: [data.Boys5_17_Not_Literate, data.Girls5_17_Not_Literate],
+              backgroundColor: '#ff8c00'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value, ctx) => {
+                const datasetIndex = ctx.datasetIndex;
+                const total = datasetIndex === 0 ? totalBoys : totalGirls;
+                return pct(value, total);
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  const total = ctx.datasetIndex === 0 ? totalBoys : totalGirls;
+                  return `${ctx.dataset.label}: ${v.toLocaleString()} (${pct(v, total)})`;
+                }
+              }
+            }
+          },
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true } 
+          }
+        }
+      });
+
+      // --- School Status Chart ---
+      destroyEducationChart('chartSchoolStatus');
+      educationCharts['chartSchoolStatus'] = new Chart(document.getElementById('chartSchoolStatus'), {
+        type: 'bar',
+        data: {
+          labels: ['Boys', 'Girls'],
+          datasets: [
+            {
+              label: 'School Going',
+              data: [data.Boys5_17_School_Going, data.Girls5_17_School_Going],
+              backgroundColor: '#3aa0ff'
+            },
+            {
+              label: 'Left School',
+              data: [data.Boys5_17_Left_School, data.Girls5_17_Left_School],
+              backgroundColor: '#ff8c00'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value, ctx) => {
+                const datasetIndex = ctx.datasetIndex;
+                const total = datasetIndex === 0 ? 
+                  (data.Boys5_17_Literate) : 
+                  (data.Girls5_17_Literate);
+                return pct(value, total);
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  const total = ctx.datasetIndex === 0 ? 
+                    (data.Boys5_17_Literate) : 
+                    (data.Girls5_17_Literate);
+                  return `${ctx.dataset.label}: ${v.toLocaleString()} (${pct(v, total)})`;
+                }
+              }
+            }
+          },
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true } 
+          }
+        }
+      });
+
+      // --- Adult Literacy (18-39) Chart ---
+      destroyEducationChart('chartAdultLiteracy1');
+      educationCharts['chartAdultLiteracy1'] = new Chart(document.getElementById('chartAdultLiteracy1'), {
+        type: 'bar',
+        data: {
+          labels: ['Male', 'Female'],
+          datasets: [
+            {
+              label: 'Literate',
+              data: [data.Male18_39_Literate, data.Female18_39_Literate],
+              backgroundColor: '#3aa0ff'
+            },
+            {
+              label: 'Not Literate',
+              data: [data.Male18_39_Not_Literate, data.Female18_39_Not_Literate],
+              backgroundColor: '#ff8c00'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value, ctx) => {
+                const datasetIndex = ctx.datasetIndex;
+                const total = datasetIndex === 0 ? 
+                  (data.Male18_39_Literate + data.Male18_39_Not_Literate) : 
+                  (data.Female18_39_Literate + data.Female18_39_Not_Literate);
+                return pct(value, total);
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  const total = ctx.datasetIndex === 0 ? 
+                    (data.Male18_39_Literate + data.Male18_39_Not_Literate) : 
+                    (data.Female18_39_Literate + data.Female18_39_Not_Literate);
+                  return `${ctx.dataset.label}: ${v.toLocaleString()} (${pct(v, total)})`;
+                }
+              }
+            }
+          },
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true } 
+          }
+        }
+      });
+
+      // --- Adult Literacy (40+) Chart ---
+      destroyEducationChart('chartAdultLiteracy2');
+      educationCharts['chartAdultLiteracy2'] = new Chart(document.getElementById('chartAdultLiteracy2'), {
+        type: 'bar',
+        data: {
+          labels: ['Male', 'Female'],
+          datasets: [
+            {
+              label: 'Literate',
+              data: [data.Male40_Literate, data.Female40_Literate],
+              backgroundColor: '#3aa0ff'
+            },
+            {
+              label: 'Not Literate',
+              data: [data.Male40_Not_Literate, data.Female40_Not_Literate],
+              backgroundColor: '#ff8c00'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value, ctx) => {
+                const datasetIndex = ctx.datasetIndex;
+                const total = datasetIndex === 0 ? 
+                  (data.Male40_Literate + data.Male40_Not_Literate) : 
+                  (data.Female40_Literate + data.Female40_Not_Literate);
+                return pct(value, total);
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  const total = ctx.datasetIndex === 0 ? 
+                    (data.Male40_Literate + data.Male40_Not_Literate) : 
+                    (data.Female40_Literate + data.Female40_Not_Literate);
+                  return `${ctx.dataset.label}: ${v.toLocaleString()} (${pct(v, total)})`;
+                }
+              }
+            }
+          },
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true } 
+          }
+        }
+      });
+
+      // --- Detailed Education Overview Chart ---
+      destroyEducationChart('chartEducationOverview');
+      educationCharts['chartEducationOverview'] = new Chart(document.getElementById('chartEducationOverview'), {
+        type: 'bar',
+        data: {
+          labels: ['Boys 5-17', 'Girls 5-17', 'Men 18-39', 'Women 18-39', 'Men 40+', 'Women 40+'],
+          datasets: [
+            {
+              label: 'Literate',
+              data: [
+                data.Boys5_17_Literate,
+                data.Girls5_17_Literate,
+                data.Male18_39_Literate,
+                data.Female18_39_Literate,
+                data.Male40_Literate,
+                data.Female40_Literate
+              ],
+              backgroundColor: '#3aa0ff'
+            },
+            {
+              label: 'Not Literate',
+              data: [
+                data.Boys5_17_Not_Literate,
+                data.Girls5_17_Not_Literate,
+                data.Male18_39_Not_Literate,
+                data.Female18_39_Not_Literate,
+                data.Male40_Not_Literate,
+                data.Female40_Not_Literate
+              ],
+              backgroundColor: '#ff8c00'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              formatter: (value, ctx) => {
+                const datasetIndex = ctx.datasetIndex;
+                const index = ctx.dataIndex;
+                const totals = [
+                  data.Boys5_17_Literate + data.Boys5_17_Not_Literate,
+                  data.Girls5_17_Literate + data.Girls5_17_Not_Literate,
+                  data.Male18_39_Literate + data.Male18_39_Not_Literate,
+                  data.Female18_39_Literate + data.Female18_39_Not_Literate,
+                  data.Male40_Literate + data.Male40_Not_Literate,
+                  data.Female40_Literate + data.Female40_Not_Literate
+                ];
+                return pct(value, totals[index]);
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.raw || 0;
+                  const index = ctx.dataIndex;
+                  const totals = [
+                    data.Boys5_17_Literate + data.Boys5_17_Not_Literate,
+                    data.Girls5_17_Literate + data.Girls5_17_Not_Literate,
+                    data.Male18_39_Literate + data.Male18_39_Not_Literate,
+                    data.Female18_39_Literate + data.Female18_39_Not_Literate,
+                    data.Male40_Literate + data.Male40_Not_Literate,
+                    data.Female40_Literate + data.Female40_Not_Literate
+                  ];
+                  return `${ctx.dataset.label}: ${v.toLocaleString()} (${pct(v, totals[index])})`;
+                }
+              }
+            }
+          },
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true } 
+          }
+        }
+      });
+    }
+
+    // refresh dashboard
+    function refresh(){
+      const t = sel.value;
+      const data = getData(t==='All'?'All':t);
+      renderCards(data);
+      renderCharts(data);
+    }
+
+    // refresh gender dashboard
+    function refreshGender(){
+      const t = genderSel.value;
+      const data = getGenderData(t==='All'?'All':t);
+      renderGenderCards(data);
+      renderGenderCharts(data);
+    }
+
+    // refresh occupation dashboard
+    function refreshOccupation(){
+      const t = occupationSel.value;
+      const data = getOccupationData(t==='All'?'All':t);
+      renderOccupationCards(data);
+      renderOccupationCharts(data);
+    }
+
+    // refresh education dashboard
+    function refreshEducation(){
+      const t = educationSel.value;
+      const data = getEducationData(t==='All'?'All':t);
+      renderEducationCards(data);
+      renderEducationCharts(data);
+    }
+
+    // nav buttons
+    document.getElementById('nav-home').addEventListener('click', ()=>{ 
+      setActiveNav('nav-home'); 
+      document.getElementById('home').style.display = 'block';
+      document.getElementById('psc-dashboard').style.display = 'none';
+      document.getElementById('gender-age-dashboard').style.display = 'none';
+      document.getElementById('occupation-dashboard').style.display = 'none';
+      document.getElementById('education-dashboard').style.display = 'none';
+      document.getElementById('summary-insights').style.display = 'none';
+      document.getElementById('home').scrollIntoView({behavior:'smooth'}); 
+    });
+    
+    document.getElementById('nav-dashboard').addEventListener('click', ()=>{ 
+      setActiveNav('nav-dashboard'); 
+      document.getElementById('home').style.display = 'none';
+      document.getElementById('psc-dashboard').style.display = 'block';
+      document.getElementById('gender-age-dashboard').style.display = 'none';
+      document.getElementById('occupation-dashboard').style.display = 'none';
+      document.getElementById('education-dashboard').style.display = 'none';
+      document.getElementById('summary-insights').style.display = 'none';
+      document.getElementById('psc-dashboard').scrollIntoView({behavior:'smooth'}); 
+    });
+    
+    document.getElementById('nav-gender').addEventListener('click', ()=>{ 
+      setActiveNav('nav-gender'); 
+      document.getElementById('home').style.display = 'none';
+      document.getElementById('psc-dashboard').style.display = 'none';
+      document.getElementById('gender-age-dashboard').style.display = 'block';
+      document.getElementById('occupation-dashboard').style.display = 'none';
+      document.getElementById('education-dashboard').style.display = 'none';
+      document.getElementById('summary-insights').style.display = 'none';
+      document.getElementById('gender-age-dashboard').scrollIntoView({behavior:'smooth'}); 
+      refreshGender();
+    });
+    
+    document.getElementById('nav-occupation').addEventListener('click', ()=>{ 
+      setActiveNav('nav-occupation'); 
+      document.getElementById('home').style.display = 'none';
+      document.getElementById('psc-dashboard').style.display = 'none';
+      document.getElementById('gender-age-dashboard').style.display = 'none';
+      document.getElementById('occupation-dashboard').style.display = 'block';
+      document.getElementById('education-dashboard').style.display = 'none';
+      document.getElementById('summary-insights').style.display = 'none';
+      document.getElementById('occupation-dashboard').scrollIntoView({behavior:'smooth'}); 
+      refreshOccupation();
+    });
+    
+    document.getElementById('nav-education').addEventListener('click', ()=>{ 
+      setActiveNav('nav-education'); 
+      document.getElementById('home').style.display = 'none';
+      document.getElementById('psc-dashboard').style.display = 'none';
+      document.getElementById('gender-age-dashboard').style.display = 'none';
+      document.getElementById('occupation-dashboard').style.display = 'none';
+      document.getElementById('education-dashboard').style.display = 'block';
+      document.getElementById('summary-insights').style.display = 'none';
+      document.getElementById('education-dashboard').scrollIntoView({behavior:'smooth'}); 
+      refreshEducation();
+    });
+    
+    document.getElementById('nav-summary').addEventListener('click', ()=>{ 
+      setActiveNav('nav-summary'); 
+      document.getElementById('home').style.display = 'none';
+      document.getElementById('psc-dashboard').style.display = 'none';
+      document.getElementById('gender-age-dashboard').style.display = 'none';
+      document.getElementById('occupation-dashboard').style.display = 'none';
+      document.getElementById('education-dashboard').style.display = 'none';
+      document.getElementById('summary-insights').style.display = 'block';
+      document.getElementById('summary-insights').scrollIntoView({behavior:'smooth'}); 
+    });
+
+    function setActiveNav(id){ 
+      document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active')); 
+      document.getElementById(id).classList.add('active'); 
+    }
+
+    // init
+    sel.addEventListener('change', refresh);
+    genderSel.addEventListener('change', refreshGender);
+    occupationSel.addEventListener('change', refreshOccupation);
+    educationSel.addEventListener('change', refreshEducation);
+    window.addEventListener('load', ()=>{ 
+      sel.value = 'All'; 
+      genderSel.value = 'All';
+      occupationSel.value = 'All';
+      educationSel.value = 'All';
+      refresh(); 
+    });
+  </script>
+</body>
+</html>
